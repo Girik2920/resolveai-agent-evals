@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BarChart3, Bot, ClipboardCheck, FileText, GitCompareArrows, Home, PlayCircle, Search, Settings } from "lucide-react";
+import { BarChart3, Bot, ClipboardCheck, FileText, GitCompareArrows, Home, Mic, PlayCircle, Search, Settings } from "lucide-react";
 import {
   Command,
   CommandDialog,
@@ -14,6 +14,7 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { demoAgents, evaluationRuns, testSuites } from "@/lib/data/seed";
+import { realWorldScenarios } from "@/lib/data/scenario-packs";
 
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: Home, hint: "Dashboard" },
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/dashboard/run", label: "Run Evaluation", icon: PlayCircle, hint: "Pipeline" },
   { href: "/dashboard/reports", label: "Reports", icon: BarChart3, hint: "Scorecards" },
   { href: "/dashboard/compare", label: "Compare", icon: GitCompareArrows, hint: "Prompts" },
+  { href: "/dashboard/voice-lab", label: "Voice Lab", icon: Mic, hint: "Calls" },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, hint: "Config" },
 ];
 
@@ -39,6 +41,11 @@ export function DashboardSearch() {
         href: `/dashboard/run?suite=${suite.id}`,
         label: suite.name,
         hint: suite.riskLevel,
+      })),
+      scenarios: realWorldScenarios.slice(0, 20).map((scenario) => ({
+        href: `/dashboard/scenarios/${scenario.id}`,
+        label: scenario.title,
+        hint: `${scenario.industry} ${scenario.realism.realismScore}`,
       })),
       reports: evaluationRuns.map((run) => ({
         href: `/dashboard/reports/${run.id}`,
@@ -121,6 +128,15 @@ export function DashboardSearch() {
               {records.suites.map((item) => (
                 <CommandItem key={item.href} value={`${item.label} ${item.hint}`} onSelect={() => go(item.href)}>
                   <ClipboardCheck className="h-4 w-4 text-amber-300" />
+                  {item.label}
+                  <CommandShortcut>{item.hint}</CommandShortcut>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandGroup heading="Scenario Library">
+              {records.scenarios.map((item) => (
+                <CommandItem key={item.href} value={`${item.label} ${item.hint}`} onSelect={() => go(item.href)}>
+                  <ClipboardCheck className="h-4 w-4 text-violet-300" />
                   {item.label}
                   <CommandShortcut>{item.hint}</CommandShortcut>
                 </CommandItem>

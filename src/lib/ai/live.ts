@@ -2,6 +2,7 @@ import { openai } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import { generateDemoScenarios, runEvaluation, type RunEvaluationInput } from "@/lib/evals/engine";
+import { realWorldScenarios } from "@/lib/data/scenario-packs";
 
 const scenarioSchema = z.object({
   scenarios: z.array(
@@ -21,7 +22,19 @@ export function isLiveMode() {
 }
 
 export async function generateScenariosWithFallback(suiteId: string, suiteName: string, count: number) {
-  if (!isLiveMode()) return generateDemoScenarios(suiteId, count);
+  const packed = realWorldScenarios
+    .filter((scenario) =>
+      suiteId.includes("refund")
+        ? ["delivery", "ecommerce"].includes(scenario.industry)
+        : suiteId.includes("appointments")
+          ? scenario.industry === "healthcare"
+          : suiteId.includes("privacy")
+            ? scenario.scenarioTags.includes("pii") || scenario.scenarioTags.includes("privacy")
+            : true
+    )
+    .slice(0, count);
+
+  if (!isLiveMode()) return packed.length ? packed : generateDemoScenarios(suiteId, count);
 
   try {
     const { output } = await generateText({

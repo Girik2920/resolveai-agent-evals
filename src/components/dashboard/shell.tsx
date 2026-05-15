@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   GitCompareArrows,
   Home,
+  Mic,
   PlayCircle,
   Settings,
   ShieldCheck,
@@ -25,6 +26,7 @@ const nav = [
   { href: "/dashboard/run", label: "Run Evaluation", icon: PlayCircle },
   { href: "/dashboard/reports", label: "Reports", icon: BarChart3 },
   { href: "/dashboard/compare", label: "Compare", icon: GitCompareArrows },
+  { href: "/dashboard/voice-lab", label: "Voice Lab", icon: Mic },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 

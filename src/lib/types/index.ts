@@ -1,6 +1,67 @@
 export type ResultLabel = "pass" | "warning" | "fail";
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 export type JudgeStrictness = "lenient" | "balanced" | "strict";
+export type SupportIndustry =
+  | "delivery"
+  | "healthcare"
+  | "ecommerce"
+  | "banking"
+  | "telecom"
+  | "voice";
+
+export type ScenarioRealism = {
+  ambiguityLevel: "low" | "medium" | "high";
+  customerEmotion: "calm" | "confused" | "frustrated" | "angry" | "panicked";
+  businessRisk: "low" | "medium" | "high";
+  policyRisk: "low" | "medium" | "high";
+  toolComplexity:
+    | "none"
+    | "single_tool"
+    | "multi_tool"
+    | "failed_tool"
+    | "conflicting_tools";
+  expectedEscalation: boolean;
+  realismScore: number;
+};
+
+export type ExpectedBehavior = {
+  requiredToolSequence: string[];
+  requiredQuestions: string[];
+  mustSay: string[];
+  mustNotSay: string[];
+  escalationTriggers: string[];
+  policyFacts: string[];
+  successCriteria: string[];
+};
+
+export type TranscriptTurn = {
+  id: string;
+  speaker: "customer" | "agent" | "tool" | "evaluator";
+  message: string;
+  timestamp?: string;
+  toolName?: string;
+  toolInput?: Record<string, unknown>;
+  toolOutput?: Record<string, unknown>;
+  evaluatorNote?: string;
+  sentiment?: "neutral" | "confused" | "frustrated" | "angry" | "panicked";
+};
+
+export type RealWorldScenario = {
+  id: string;
+  title: string;
+  industry: SupportIndustry;
+  description: string;
+  customerOpeningMessage: string;
+  customerContext: string;
+  hiddenGroundTruth: string;
+  scenarioTags: string[];
+  riskLevel: RiskLevel;
+  realism: ScenarioRealism;
+  expectedBehavior: ExpectedBehavior;
+  transcript: TranscriptTurn[];
+  commonAgentFailures: string[];
+  recommendedFixes: string[];
+};
 
 export type ToolDefinition = {
   id: string;
@@ -69,8 +130,8 @@ export type TestScenario = {
 export type ToolCall = {
   id: string;
   name: string;
-  arguments: Record<string, string | number | boolean>;
-  status: "success" | "error" | "skipped";
+  arguments: Record<string, unknown>;
+  status: "success" | "error" | "skipped" | "partial" | "conflicting" | "timeout" | "requires_human_review";
   output: string;
   latencyMs: number;
 };
@@ -100,6 +161,18 @@ export type ScenarioResult = {
   scenarioName: string;
   customerIntent: string;
   riskType: string;
+  industry?: SupportIndustry;
+  customerEmotion?: ScenarioRealism["customerEmotion"];
+  riskLevel?: RiskLevel;
+  toolComplexity?: ScenarioRealism["toolComplexity"];
+  realismScore?: number;
+  expectedBehavior?: ExpectedBehavior;
+  actualBehavior?: string[];
+  missedToolCalls?: string[];
+  incorrectToolCalls?: string[];
+  missedEscalation?: boolean;
+  customerExperienceIssue?: string;
+  recommendedFix?: string;
   result: ResultLabel;
   score: number;
   failureReason: string;

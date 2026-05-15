@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { evaluationRuns } from "@/lib/data/seed";
+import { productionReadiness } from "@/lib/evals/production-readiness";
 import { resolveEvaluationRun } from "@/lib/evals/engine";
 import { badgeClass } from "@/lib/evals/rubric";
 
@@ -19,6 +20,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
   const { id } = await params;
   const run = await resolveEvaluationRun(id);
   if (!run) notFound();
+  const readiness = productionReadiness(run);
   const failureCategories = Object.entries(
     run.scenarioResults
       .filter((scenario) => scenario.result !== "pass")
@@ -63,6 +65,28 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
           <Card key={label} className="glass-panel"><CardContent className="p-5"><p className="text-sm text-white/45">{label}</p><p className="mt-2 text-3xl font-semibold text-white">{value}%</p></CardContent></Card>
         ))}
       </div>
+      <Card className="glass-panel">
+        <CardHeader>
+          <CardTitle className="text-white">Would this agent be safe to deploy?</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <Badge className={readiness.status === "Ready for pilot" ? "bg-emerald-500/15 text-emerald-100" : readiness.status === "Needs guardrails" ? "bg-amber-500/15 text-amber-100" : "bg-red-500/15 text-red-100"}>
+                {readiness.status}
+              </Badge>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-white/60">
+                Decision is based on overall score, critical safety failures, PII risk, escalation accuracy, tool-call accuracy, hallucination rate, and repeated missed escalations.
+              </p>
+            </div>
+            <div className="grid gap-2 lg:min-w-96">
+              {readiness.reasons.map((reason) => (
+                <div key={reason} className="rounded-md border border-white/10 bg-white/[0.035] p-3 text-sm text-white/65">{reason}</div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       <Card className="glass-panel">
         <CardHeader><CardTitle className="text-white">Score breakdown</CardTitle></CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
@@ -110,13 +134,16 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
         <CardHeader><CardTitle className="text-white">Scenario table</CardTitle></CardHeader>
         <CardContent className="p-0">
           <Table>
-            <TableHeader><TableRow><TableHead>Scenario</TableHead><TableHead>Customer intent</TableHead><TableHead>Risk</TableHead><TableHead>Result</TableHead><TableHead>Score</TableHead><TableHead>Failure reason</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Scenario</TableHead><TableHead>Industry</TableHead><TableHead>Emotion</TableHead><TableHead>Risk</TableHead><TableHead>Tools</TableHead><TableHead>Realism</TableHead><TableHead>Result</TableHead><TableHead>Score</TableHead><TableHead>Failure reason</TableHead></TableRow></TableHeader>
             <TableBody>
               {run.scenarioResults.map((scenario) => (
                 <TableRow key={scenario.id}>
                   <TableCell className="font-medium text-white">{scenario.scenarioName}</TableCell>
-                  <TableCell className="max-w-xs text-white/55">{scenario.customerIntent}</TableCell>
-                  <TableCell className="text-white/60">{scenario.riskType}</TableCell>
+                  <TableCell className="text-white/60">{scenario.industry ?? "support"}</TableCell>
+                  <TableCell className="text-white/60">{scenario.customerEmotion ?? "frustrated"}</TableCell>
+                  <TableCell className="text-white/60">{scenario.riskLevel ?? scenario.riskType}</TableCell>
+                  <TableCell className="text-white/60">{scenario.toolComplexity?.replaceAll("_", " ") ?? "multi tool"}</TableCell>
+                  <TableCell className="font-mono text-white">{scenario.realismScore ?? 74}</TableCell>
                   <TableCell><Badge className={badgeClass(scenario.result)}>{scenario.result}</Badge></TableCell>
                   <TableCell className="font-mono text-white">{scenario.score}</TableCell>
                   <TableCell className="max-w-sm text-white/55">{scenario.failureReason}</TableCell>
@@ -130,6 +157,29 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
         <h2 className="mb-3 flex items-center gap-2 text-xl font-semibold text-white"><ShieldCheck className="h-5 w-5 text-sky-300" />Transcript analysis</h2>
         <TranscriptViewer results={run.scenarioResults} />
       </div>
+      <Card className="glass-panel">
+        <CardHeader><CardTitle className="text-white">Evaluator findings by scenario</CardTitle></CardHeader>
+        <CardContent className="grid gap-4 lg:grid-cols-2">
+          {run.scenarioResults.map((scenario) => (
+            <div key={`${scenario.id}-findings`} className="rounded-md border border-white/10 bg-white/[0.035] p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="font-medium text-white">{scenario.scenarioName}</p>
+                <Badge className={badgeClass(scenario.result)}>{scenario.result}</Badge>
+              </div>
+              <div className="space-y-2 text-sm">
+                <p><span className="text-white/40">Expected behavior: </span><span className="text-white/65">{scenario.expectedBehavior?.successCriteria.join(" ") ?? "Verify evidence, follow policy, and escalate when needed."}</span></p>
+                <p><span className="text-white/40">Actual behavior: </span><span className="text-white/65">{scenario.actualBehavior?.join("; ") ?? scenario.evaluatorNotes}</span></p>
+                <p><span className="text-white/40">Missed tool call: </span><span className="text-white/65">{scenario.missedToolCalls?.join(", ") || "None detected"}</span></p>
+                <p><span className="text-white/40">Incorrect tool call: </span><span className="text-white/65">{scenario.incorrectToolCalls?.join(", ") || "None detected"}</span></p>
+                <p><span className="text-white/40">Missed escalation: </span><span className={scenario.missedEscalation ? "text-red-200" : "text-emerald-200"}>{scenario.missedEscalation ? "Yes" : "No"}</span></p>
+                <p><span className="text-white/40">Hallucinated policy: </span><span className="text-white/65">{scenario.hallucinationExamples.join("; ") || "None detected"}</span></p>
+                <p><span className="text-white/40">Customer experience issue: </span><span className="text-white/65">{scenario.customerExperienceIssue || "No major issue"}</span></p>
+                <p><span className="text-white/40">Recommended fix: </span><span className="text-sky-100">{scenario.recommendedFix || "Keep current guardrails and monitor regressions."}</span></p>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
       <Card className="glass-panel">
         <CardHeader><CardTitle className="text-white">Recommendations</CardTitle></CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">

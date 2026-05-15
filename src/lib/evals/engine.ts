@@ -54,14 +54,12 @@ export async function resolveEvaluationRun(id: string): Promise<EvaluationRun | 
     for (const suite of testSuites) {
       for (const version of agent.versions) {
         if (id === `run-demo-${agent.id}-${suite.id}-${version.version}`) {
-          return runDemoEvaluation({
+          return buildRealWorldEvaluation({
             agentId: agent.id,
             suiteId: suite.id,
             promptVersion: version.version,
             scenarioCount: 5,
             strictness: "balanced",
-            simulateApiFailures: true,
-            includePromptInjection: true,
             scenarioSource: "seeded",
           });
         }
@@ -81,7 +79,15 @@ export function evaluateToolWorkflow(expectedTools: string[], actualTools: strin
   const extraHighRisk = actualTools.filter(
     (tool) =>
       !expectedTools.includes(tool) &&
-      ["bookAppointment", "checkRefundEligibility", "sendConfirmationSMS"].includes(tool)
+      [
+        "bookAppointment",
+        "checkRefundEligibility",
+        "sendConfirmationSMS",
+        "createBillingDispute",
+        "checkFraudAlert",
+        "getPaymentLedger",
+        "getBillingLedger",
+      ].includes(tool)
   );
   const orderMatches = expectedTools.every((tool, index) => actualTools[index] === tool);
 

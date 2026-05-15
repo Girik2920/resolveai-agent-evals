@@ -1,6 +1,6 @@
 # ResolveAI
 
-Stress-test AI agents before they reach customers.
+Stress-test chat and voice AI agents before they reach customers.
 
 ResolveAI is a production-style SaaS dashboard for testing AI customer support agents before deployment. It simulates realistic customer conversations, validates tool calls, detects hallucinations, checks policy compliance, measures escalation behavior, and compares prompt versions.
 
@@ -10,12 +10,28 @@ Customer support agents need more than a happy-path chatbot demo. Real deploymen
 
 ## Key Features
 
-- Demo workspace with 3 agents, 9 suites, 27 seeded scenarios, 5 reports, transcripts, tool calls, and recommendations.
+- Demo workspace with 3 agents, 9 suites, 60+ real-world scenario cases, 5 reports, transcripts, tool calls, and recommendations.
 - Evaluation rubric for factual correctness, policy compliance, tool-call correctness, escalation, safety, customer experience, completeness, and latency.
 - Run evaluation flow with animated pipeline steps and demo-mode fallback.
 - Report detail pages with scenario tables, expandable transcripts, hallucination examples, scorecards, and export buttons.
 - Prompt comparison for v1 vs v2 with regression warnings and side-by-side transcript samples.
+- Voice Lab for support-call transcripts, interruption handling, speech uncertainty, escalation timing, metadata capture, call-summary accuracy, and sentiment.
+- Production readiness decisions: ready for pilot, needs guardrails, or not production ready.
 - Supabase-ready schema and Vercel AI SDK hooks for live OpenAI structured generation.
+
+## Real-world scenario library
+
+ResolveAI includes a structured scenario library across delivery, healthcare, fintech, telecom, e-commerce, and voice support:
+
+- 60+ multi-industry scenarios
+- Messy multi-turn transcripts with customer emotion and ambiguity
+- Hidden ground truth for evaluator-only facts
+- Expected tool sequences and tool-result uncertainty checks
+- Escalation triggers for safety, PII, fraud, chargebacks, and repeated human requests
+- Policy constraints and RAG/policy faithfulness checks
+- Realism scoring from ambiguity, emotion, risk, tool complexity, conflicting evidence, and transcript length
+- Voice-call evaluation with interruptions, background noise, unclear speech, metadata capture, and call-summary checks
+- Production-readiness scoring for pilot decisions
 
 ## Architecture
 
@@ -24,15 +40,17 @@ flowchart TD
   A[Marketing Page] --> B[Demo Workspace]
   B --> C[Agent Definition]
   C --> D[Test Suite Selection]
-  D --> E[/api/run-evaluation]
-  E --> F{OPENAI_API_KEY?}
-  F -->|No| G[Seeded Demo Engine]
-  F -->|Yes| H[Vercel AI SDK + OpenAI]
-  G --> I[Scenario Results]
-  H --> I
-  I --> J[Report Detail]
-  J --> K[Exports: JSON, CSV, Markdown]
-  I --> L[Supabase-ready Tables]
+  D --> E[Scenario Library]
+  E --> F[/api/run-evaluation]
+  F --> G{OPENAI_API_KEY?}
+  G -->|No| H[Real-world Demo Engine]
+  G -->|Yes| I[Vercel AI SDK + OpenAI]
+  H --> J[Scenario Results]
+  I --> J
+  J --> K[Report + Production Readiness]
+  J --> L[Voice Lab]
+  K --> M[Exports: JSON, CSV, Markdown]
+  J --> N[Supabase-ready Tables]
 ```
 
 ## Tech Stack
@@ -46,6 +64,8 @@ Next.js App Router, TypeScript, Tailwind CSS, shadcn/ui, Framer Motion, Recharts
 - Run evaluation: `/dashboard/run`
 - Detailed report: `/dashboard/reports/run-refund-v2`
 - Prompt comparison: `/dashboard/compare`
+- Scenario library: `/dashboard/test-suites`
+- Voice Lab: `/dashboard/voice-lab`
 
 ## Local Setup
 
@@ -106,6 +126,7 @@ gh repo create resolveai-agent-evals --public --source=. --remote=origin --push
 5. Run the pipeline and inspect the generated report.
 6. Export JSON, CSV, or Markdown from the report page.
 7. Compare prompt v1 vs v2 in `/dashboard/compare`.
+8. Inspect voice-call behavior in `/dashboard/voice-lab`.
 
 ## Evaluation Rubric
 
@@ -122,9 +143,11 @@ Labels: `85-100` pass, `70-84` warning, below `70` fail.
 
 ## Resume bullets:
 
-- Built ResolveAI, an AI agent evaluation platform that simulates customer conversations, validates tool calls, detects hallucinations, and scores production-readiness across policy, safety, and escalation criteria.
-- Implemented automated test suites for prompt injection, API failure handling, policy compliance, PII leakage, and human handoff using Next.js, TypeScript, Vercel AI SDK, OpenAI, and Supabase-ready schemas.
-- Designed a dashboard for agent observability with evaluation reports, transcript-level failure analysis, prompt version comparison, containment metrics, and regression warnings.
+- Expanded ResolveAI with a real-world scenario library across delivery, healthcare, fintech, telecom, e-commerce, and voice support, including messy multi-turn transcripts, hidden ground truth, expected tool sequences, escalation triggers, realism scoring, and production-readiness reports.
+- Built ResolveAI, an AI agent evaluation platform that simulates realistic customer conversations, validates tool calls, detects hallucinations, and scores production readiness across policy, safety, and escalation criteria.
+- Implemented test suites for prompt injection, API failure handling, RAG faithfulness, PII leakage, healthcare escalation, refund abuse, billing disputes, and human handoff.
+- Designed observability-style reports with transcript traces, retrieved context, tool-call logs, evaluator judgments, realism scoring, prompt-version comparisons, and regression warnings.
+- Added a Voice Lab for support-call transcript evaluation, measuring interruption handling, speech uncertainty, escalation timing, metadata capture, call-summary accuracy, and customer sentiment.
 - Created structured evaluation rubrics and mock enterprise tools to measure factual correctness, tool-call accuracy, escalation behavior, safety, latency, and customer experience.
 
 ## Future Improvements

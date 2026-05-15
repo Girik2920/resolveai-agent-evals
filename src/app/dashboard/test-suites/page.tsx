@@ -1,16 +1,26 @@
 import { PlayCircle, ShieldAlert } from "lucide-react";
 import Link from "next/link";
+import { ScenarioLibraryClient } from "@/components/dashboard/scenario-library-client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { realWorldScenarios, scenarioLibraryStats } from "@/lib/data/scenario-packs";
 import { testSuites } from "@/lib/data/seed";
 
 export default function TestSuitesPage() {
+  const stats = scenarioLibraryStats();
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-semibold text-white">Test suites</h1>
-        <p className="mt-2 text-white/55">Prebuilt regression suites for policy, safety, hallucination, tool, and escalation failure modes.</p>
+        <p className="mt-2 max-w-3xl text-white/55">Prebuilt regression suites plus a 60-scenario enterprise library for messy chat and voice support cases.</p>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="glass-panel"><CardContent className="p-4"><p className="text-xs text-white/45">Scenario library</p><p className="mt-2 text-3xl font-semibold text-white">{stats.total}</p></CardContent></Card>
+        <Card className="glass-panel"><CardContent className="p-4"><p className="text-xs text-white/45">Avg realism</p><p className="mt-2 text-3xl font-semibold text-white">{stats.averageRealism}</p></CardContent></Card>
+        <Card className="glass-panel"><CardContent className="p-4"><p className="text-xs text-white/45">High-risk cases</p><p className="mt-2 text-3xl font-semibold text-white">{stats.highRiskCount}</p></CardContent></Card>
+        <Card className="glass-panel"><CardContent className="p-4"><p className="text-xs text-white/45">Voice calls</p><p className="mt-2 text-3xl font-semibold text-white">{stats.voiceCount}</p></CardContent></Card>
       </div>
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {testSuites.map((suite) => (
@@ -45,6 +55,13 @@ export default function TestSuitesPage() {
             </CardContent>
           </Card>
         ))}
+      </div>
+      <div className="space-y-3">
+        <div>
+          <h2 className="text-2xl font-semibold text-white">Real-world scenario library</h2>
+          <p className="mt-2 text-white/55">Filter by industry, risk, emotion, ambiguity, tool complexity, expected escalation, realism, and voice/chat mode.</p>
+        </div>
+        <ScenarioLibraryClient scenarios={realWorldScenarios} />
       </div>
     </div>
   );

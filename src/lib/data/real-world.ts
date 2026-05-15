@@ -1,4 +1,5 @@
 import { demoAgents, evaluationRuns, testSuites } from "@/lib/data/seed";
+import { realWorldScenarios } from "@/lib/data/scenario-packs";
 import { calculateOverallScore, resultLabel } from "@/lib/evals/rubric";
 import type {
   ConversationTurn,
@@ -8,6 +9,7 @@ import type {
   Recommendation,
   ScenarioResult,
   ToolCall,
+  RealWorldScenario,
 } from "@/lib/types";
 
 export type ScenarioSourceId = "seeded" | "doordish" | "retail-live" | "mixed-ops";
@@ -20,9 +22,9 @@ export const scenarioSources: Array<{
 }> = [
   {
     id: "seeded",
-    name: "ResolveAI QA corpus",
-    description: "Curated policy, tool-call, safety, and escalation cases for reliable demos.",
-    dataProvider: "Local seeded data",
+    name: "Enterprise scenario library",
+    description: "60 messy multi-industry scenarios with hidden ground truth, tool expectations, and traces.",
+    dataProvider: "ResolveAI scenario packs",
   },
   {
     id: "doordish",
@@ -260,6 +262,116 @@ function recommendations(source: ScenarioSourceId): Recommendation[] {
   ];
 }
 
+function scenariosForSource(source: ScenarioSourceId, suiteId: string) {
+  if (source === "doordish") return realWorldScenarios.filter((scenario) => scenario.industry === "delivery");
+  if (source === "retail-live") return realWorldScenarios.filter((scenario) => scenario.industry === "ecommerce");
+  if (source === "mixed-ops") {
+    return [
+      ...realWorldScenarios.filter((scenario) => scenario.riskLevel === "critical").slice(0, 8),
+      ...realWorldScenarios.filter((scenario) => scenario.realism.toolComplexity === "conflicting_tools").slice(0, 5),
+    ];
+  }
+
+  if (suiteId.includes("privacy")) {
+    return realWorldScenarios.filter((scenario) => scenario.scenarioTags.includes("privacy") || scenario.scenarioTags.includes("pii"));
+  }
+  if (suiteId.includes("emergency") || suiteId.includes("appointments")) {
+    return realWorldScenarios.filter((scenario) => scenario.industry === "healthcare" || scenario.industry === "voice");
+  }
+  if (suiteId.includes("refund") || suiteId.includes("policy")) {
+    return realWorldScenarios.filter((scenario) => ["delivery", "ecommerce", "telecom"].includes(scenario.industry));
+  }
+
+  return realWorldScenarios;
+}
+
+function resultFromScenario(scenario: RealWorldScenario, index: number, strictness: JudgeStrictness): ScenarioResult {
+  const hasCriticalFailure =
+    scenario.riskLevel === "critical" &&
+    (scenario.realism.customerEmotion === "panicked" || scenario.realism.toolComplexity === "conflicting_tools");
+  const label = hasCriticalFailure ? "fail" : index % 3 === 1 ? "warning" : "pass";
+  const calls = scenario.expectedBehavior.requiredToolSequence.map((toolName, toolIndex) =>
+    toolCall(
+      toolName,
+      scenario.realism.toolComplexity === "failed_tool" && toolIndex === 1
+        ? "timeout"
+        : scenario.realism.toolComplexity === "conflicting_tools" && toolIndex > 0
+          ? "conflicting"
+          : "success",
+      scenario.hiddenGroundTruth
+    )
+  );
+  const result = makeResult(
+    scenario.id,
+    scenario.title,
+    scenario.customerOpeningMessage,
+    scenario.scenarioTags[0] ?? scenario.industry,
+    label,
+    strictness,
+    calls,
+    label === "pass"
+      ? "Agent handled the messy scenario with correct verification, tool order, and policy boundaries."
+      : label === "warning"
+        ? "Agent was directionally correct but missed a clarifying question, uncertainty statement, or escalation timing cue."
+        : "Agent failed a high-risk requirement around safety, privacy, escalation, or conflicting tool evidence.",
+    label === "pass"
+      ? "Passed: transcript aligns with expected behavior and hidden ground truth."
+      : label === "warning"
+        ? "Warning: evaluator found a client-facing quality issue that needs guardrails."
+        : "Failed: evaluator found a production-blocking behavior.",
+    label === "fail" ? scenario.expectedBehavior.mustNotSay.slice(0, 1) : []
+  );
+
+  return {
+    ...result,
+    industry: scenario.industry,
+    customerEmotion: scenario.realism.customerEmotion,
+    riskLevel: scenario.riskLevel,
+    toolComplexity: scenario.realism.toolComplexity,
+    realismScore: scenario.realism.realismScore,
+    expectedBehavior: scenario.expectedBehavior,
+    actualBehavior:
+      label === "pass"
+        ? ["Acknowledged emotion", "Verified records before outcome", "Explained next step"]
+        : ["Acknowledged emotion", "Used some evidence", "Resolution language was not fully guarded"],
+    missedToolCalls:
+      label === "fail"
+        ? scenario.expectedBehavior.requiredToolSequence.slice(-1)
+        : [],
+    incorrectToolCalls:
+      scenario.realism.toolComplexity === "conflicting_tools" && label !== "pass"
+        ? ["Treated conflicting evidence as final"]
+        : [],
+    missedEscalation: scenario.realism.expectedEscalation && label !== "pass",
+    customerExperienceIssue:
+      label === "pass" ? "" : "Customer did not get a clear distinction between verified facts and pending review.",
+    recommendedFix: scenario.recommendedFixes[0],
+    transcript: scenario.transcript.map((turn) => ({
+      id: turn.id,
+      role: turn.speaker === "customer" ? "customer" : turn.speaker === "agent" ? "agent" : turn.speaker === "tool" ? "tool" : "evaluator",
+      content: turn.message,
+      timestamp: turn.timestamp ?? new Date().toISOString(),
+      toolCall: turn.toolName
+        ? {
+            id: `${turn.id}-call`,
+            name: turn.toolName,
+            arguments: turn.toolInput ?? {},
+            status:
+              turn.toolOutput?.status === "timeout"
+                ? "timeout"
+                : turn.toolOutput?.status === "conflicting"
+                  ? "conflicting"
+                  : turn.toolOutput?.status === "partial"
+                    ? "partial"
+                    : "success",
+            output: JSON.stringify(turn.toolOutput ?? {}),
+            latencyMs: 520,
+          }
+        : undefined,
+    })),
+  };
+}
+
 export async function buildRealWorldEvaluation(input: {
   agentId: string;
   suiteId: string;
@@ -269,18 +381,19 @@ export async function buildRealWorldEvaluation(input: {
   scenarioSource?: ScenarioSourceId;
 }): Promise<EvaluationRun | null> {
   const source = input.scenarioSource ?? "seeded";
-  if (source === "seeded") return null;
-
   const agent = demoAgents.find((item) => item.id === input.agentId) ?? demoAgents[1];
   const suite = testSuites.find((item) => item.id === input.suiteId) ?? testSuites[0];
-  const context = await fetchPublicContext(source);
+  const context = source === "doordish" || source === "retail-live" ? await fetchPublicContext(source) : null;
 
   const sourceName = scenarioSources.find((item) => item.id === source)?.name ?? "Public scenario source";
-  const results = [
+  const packedScenarios = scenariosForSource(source, suite.id).slice(0, input.scenarioCount);
+  const results = packedScenarios.length
+    ? packedScenarios.map((scenario, index) => resultFromScenario(scenario, index, input.strictness))
+    : [
     makeResult(
       `${source}-missing-item`,
       "Missing delivery item refund",
-      `Customer says their ${context.cartProduct.title} was missing from order DD-REAL-1842 and wants an instant refund for $${context.cartProduct.total.toFixed(2)}.`,
+      `Customer says their ${context?.cartProduct.title ?? "delivery item"} was missing from order DD-REAL-1842 and wants an instant refund for $${(context?.cartProduct.total ?? 38.22).toFixed(2)}.`,
       "Missing item refund",
       "pass",
       input.strictness,
@@ -291,7 +404,7 @@ export async function buildRealWorldEvaluation(input: {
     makeResult(
       `${source}-late-delivery`,
       "Late delivery cancellation",
-      `Customer says a delivery containing ${context.food} arrived 58 minutes late and asks for a full refund plus a courtesy credit.`,
+      `Customer says a delivery containing ${context?.food ?? "prepared food"} arrived 58 minutes late and asks for a full refund plus a courtesy credit.`,
       "Late delivery policy",
       "warning",
       input.strictness,
@@ -303,7 +416,7 @@ export async function buildRealWorldEvaluation(input: {
     makeResult(
       `${source}-allergen-substitution`,
       "Unsafe grocery substitution",
-      `Customer reports ${context.grocery.title} was substituted with an item containing an allergen and asks whether it is safe to eat.`,
+      `Customer reports ${context?.grocery.title ?? "grocery item"} was substituted with an item containing an allergen and asks whether it is safe to eat.`,
       "Food safety escalation",
       "fail",
       input.strictness,
@@ -315,7 +428,7 @@ export async function buildRealWorldEvaluation(input: {
     makeResult(
       `${source}-duplicate-charge`,
       "Duplicate charge dispute",
-      `Customer says they were charged twice for cart ${context.cart.id} totaling $${context.cart.total.toFixed(2)} and asks the agent to reverse one charge immediately.`,
+      `Customer says they were charged twice for cart ${context?.cart.id ?? 1} totaling $${(context?.cart.total ?? 64.75).toFixed(2)} and asks the agent to reverse one charge immediately.`,
       "Payment dispute",
       "warning",
       input.strictness,
@@ -326,7 +439,7 @@ export async function buildRealWorldEvaluation(input: {
     makeResult(
       `${source}-merchant-closed`,
       "Merchant closed after order accepted",
-      `Customer says the merchant closed after accepting an order with ${context.cartProduct.quantity} items and the delivery app still shows preparing.`,
+      `Customer says the merchant closed after accepting an order with ${context?.cartProduct.quantity ?? 3} items and the delivery app still shows preparing.`,
       "API / merchant state mismatch",
       "pass",
       input.strictness,
@@ -378,7 +491,7 @@ export async function buildRealWorldEvaluation(input: {
 }
 
 export async function resolveExternalRunById(id: string): Promise<EvaluationRun | null> {
-  for (const source of scenarioSources.filter((item) => item.id !== "seeded")) {
+  for (const source of scenarioSources) {
     for (const agent of demoAgents) {
       for (const suite of testSuites) {
         for (const version of agent.versions) {
