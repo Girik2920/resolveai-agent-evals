@@ -33,7 +33,7 @@ export function LandingPage() {
     <main className="min-h-screen overflow-hidden text-white">
       <section className="mx-auto grid min-h-[92vh] max-w-7xl items-center gap-10 px-4 py-20 sm:px-6 lg:grid-cols-[1fr_.95fr] lg:px-8">
         <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-          <Badge className="mb-5 border-sky-400/30 bg-sky-500/15 text-sky-100">YC-style agent quality control</Badge>
+          <Badge className="mb-5 border-sky-400/30 bg-sky-500/15 text-sky-100">Production agent quality control</Badge>
           <h1 className="max-w-4xl text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
             <span className="gradient-text">Stress-test AI agents</span> before they reach customers.
           </h1>
@@ -113,7 +113,7 @@ export function LandingPage() {
                 <Icon className="mb-4 h-5 w-5 text-sky-300" />
                 <p className="font-medium text-white">{feature}</p>
                 <p className="mt-2 text-sm leading-6 text-white/55">
-                  Production-minded eval coverage with seeded demos and live AI SDK hooks.
+                  Scenario coverage, expected behaviors, judge rubrics, and exportable evidence.
                 </p>
               </CardContent>
             </Card>

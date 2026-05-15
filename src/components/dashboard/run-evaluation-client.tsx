@@ -22,12 +22,21 @@ const steps = [
   "Building report",
 ];
 
-export function RunEvaluationClient() {
+type RunEvaluationClientProps = {
+  initialAgentId?: string;
+  initialSuiteId?: string;
+};
+
+export function RunEvaluationClient({ initialAgentId, initialSuiteId }: RunEvaluationClientProps) {
   const router = useRouter();
-  const [agentId, setAgentId] = useState(demoAgents[1].id);
+  const [agentId, setAgentId] = useState(
+    demoAgents.some((agent) => agent.id === initialAgentId) ? initialAgentId! : demoAgents[1].id
+  );
   const agent = useMemo(() => demoAgents.find((item) => item.id === agentId) ?? demoAgents[1], [agentId]);
   const [promptVersion, setPromptVersion] = useState(agent.versions.at(-1)?.version ?? "v2");
-  const [suiteId, setSuiteId] = useState(testSuites[0].id);
+  const [suiteId, setSuiteId] = useState(
+    testSuites.some((suite) => suite.id === initialSuiteId) ? initialSuiteId! : testSuites[0].id
+  );
   const [scenarioCount, setScenarioCount] = useState([5]);
   const [strictness, setStrictness] = useState("balanced");
   const [apiFailures, setApiFailures] = useState(true);

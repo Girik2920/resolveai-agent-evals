@@ -18,6 +18,20 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
   const { id } = await params;
   const run = getRun(id);
   if (!run) notFound();
+  const failureCategories = Object.entries(
+    run.scenarioResults
+      .filter((scenario) => scenario.result !== "pass")
+      .reduce<Record<string, number>>((counts, scenario) => {
+        counts[scenario.riskType] = (counts[scenario.riskType] ?? 0) + 1;
+        return counts;
+      }, {})
+  );
+  const hallucinations = run.scenarioResults.flatMap((scenario) =>
+    scenario.hallucinationExamples.map((example) => ({
+      scenario: scenario.scenarioName,
+      example,
+    }))
+  );
 
   return (
     <div className="space-y-6">
@@ -59,6 +73,38 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
           ))}
         </CardContent>
       </Card>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Card className="glass-panel">
+          <CardHeader><CardTitle className="text-white">Key failure categories</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {failureCategories.length ? failureCategories.map(([category, count]) => (
+              <div key={category} className="flex items-center justify-between rounded-md border border-white/10 bg-white/[0.035] p-3">
+                <span className="text-sm text-white/70">{category}</span>
+                <Badge className="border-amber-400/30 bg-amber-500/15 text-amber-100">{count} flagged</Badge>
+              </div>
+            )) : (
+              <div className="rounded-md border border-emerald-400/20 bg-emerald-500/10 p-3 text-sm text-emerald-100">
+                No failing categories in this run.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="glass-panel">
+          <CardHeader><CardTitle className="text-white">Hallucination evidence</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {hallucinations.length ? hallucinations.map((item) => (
+              <div key={`${item.scenario}-${item.example}`} className="rounded-md border border-red-400/20 bg-red-500/10 p-3">
+                <p className="text-sm font-medium text-red-100">{item.scenario}</p>
+                <p className="mt-1 text-sm text-red-100/70">{item.example}</p>
+              </div>
+            )) : (
+              <div className="rounded-md border border-emerald-400/20 bg-emerald-500/10 p-3 text-sm text-emerald-100">
+                No hallucinated policy facts detected.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
       <Card className="glass-panel">
         <CardHeader><CardTitle className="text-white">Scenario table</CardTitle></CardHeader>
         <CardContent className="p-0">

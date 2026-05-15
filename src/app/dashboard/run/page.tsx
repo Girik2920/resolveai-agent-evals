@@ -1,6 +1,12 @@
 import { RunEvaluationClient } from "@/components/dashboard/run-evaluation-client";
 
-export default function RunPage() {
+export default async function RunPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ agent?: string; suite?: string }>;
+}) {
+  const params = await searchParams;
+
   return (
     <div className="space-y-6">
       <div>
@@ -9,7 +15,7 @@ export default function RunPage() {
           Configure an agent, prompt version, and risk suite. Demo mode executes a realistic seeded pipeline; live mode uses AI SDK hooks when an OpenAI key is present.
         </p>
       </div>
-      <RunEvaluationClient />
+      <RunEvaluationClient initialAgentId={params.agent} initialSuiteId={params.suite} />
     </div>
   );
 }

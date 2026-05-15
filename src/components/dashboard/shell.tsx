@@ -9,13 +9,12 @@ import {
   GitCompareArrows,
   Home,
   PlayCircle,
-  Search,
   Settings,
   ShieldCheck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DashboardSearch } from "@/components/dashboard/dashboard-search";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
@@ -89,21 +88,17 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 <Sidebar />
               </SheetContent>
             </Sheet>
-            <div className="relative max-w-xl flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
-              <Input
-                placeholder="Search runs, failures, agents..."
-                className="border-white/10 bg-white/[0.06] pl-9 text-white placeholder:text-white/35"
-              />
-            </div>
+            <DashboardSearch />
             <Badge className="hidden border-emerald-400/30 bg-emerald-500/15 text-emerald-100 sm:inline-flex">
               Demo mode
             </Badge>
             <Badge className="hidden border-sky-400/30 bg-sky-500/15 text-sky-100 md:inline-flex">
               openai/gpt-5.4 ready
             </Badge>
-            <Button variant="outline" className="hidden border-white/10 bg-white/5 text-white hover:bg-white/10 md:inline-flex">
-              GitHub
+            <Button asChild variant="outline" className="hidden border-white/10 bg-white/5 text-white hover:bg-white/10 md:inline-flex">
+              <Link href="https://github.com/Girik2920/resolveai-agent-evals" target="_blank" rel="noreferrer">
+                GitHub
+              </Link>
             </Button>
           </div>
         </header>
