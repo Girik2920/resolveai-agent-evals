@@ -1,7 +1,7 @@
 import { openai } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
 import { z } from "zod";
-import { generateDemoScenarios, runDemoEvaluation, type RunEvaluationInput } from "@/lib/evals/engine";
+import { generateDemoScenarios, runEvaluation, type RunEvaluationInput } from "@/lib/evals/engine";
 
 const scenarioSchema = z.object({
   scenarios: z.array(
@@ -47,6 +47,6 @@ export async function generateScenariosWithFallback(suiteId: string, suiteName: 
 }
 
 export async function runEvaluationWithFallback(input: RunEvaluationInput) {
-  if (!isLiveMode()) return runDemoEvaluation(input);
-  return runDemoEvaluation(input);
+  if (!isLiveMode()) return runEvaluation(input);
+  return runEvaluation(input);
 }

@@ -37,7 +37,7 @@ export default function TestSuitesPage() {
                 </div>
               </div>
               <Button asChild className="mt-5 w-full bg-white text-slate-950 hover:bg-white/90">
-                <Link href={`/dashboard/run?suite=${suite.id}`}>
+                <Link href={`/dashboard/run?suite=${suite.id}&source=${suite.id === "suite-refunds" ? "doordish" : "mixed-ops"}`}>
                   <PlayCircle className="mr-2 h-4 w-4" />
                   Run suite
                 </Link>

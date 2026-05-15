@@ -1,4 +1,5 @@
 import { demoAgents, evaluationRuns, getSuiteScenarios, testSuites } from "@/lib/data/seed";
+import { buildRealWorldEvaluation, resolveExternalRunById, type ScenarioSourceId } from "@/lib/data/real-world";
 import { calculateOverallScore, resultLabel } from "@/lib/evals/rubric";
 import type { EvaluationRun, JudgeStrictness } from "@/lib/types";
 
@@ -10,6 +11,7 @@ export type RunEvaluationInput = {
   strictness: JudgeStrictness;
   simulateApiFailures: boolean;
   includePromptInjection: boolean;
+  scenarioSource?: ScenarioSourceId;
 };
 
 export function runDemoEvaluation(input: RunEvaluationInput): EvaluationRun {
@@ -34,6 +36,40 @@ export function runDemoEvaluation(input: RunEvaluationInput): EvaluationRun {
     createdAt: new Date().toISOString(),
     scenarioResults: fallback.scenarioResults.slice(0, input.scenarioCount),
   };
+}
+
+export async function runEvaluation(input: RunEvaluationInput): Promise<EvaluationRun> {
+  const externalRun = await buildRealWorldEvaluation(input);
+  return externalRun ?? runDemoEvaluation(input);
+}
+
+export async function resolveEvaluationRun(id: string): Promise<EvaluationRun | null> {
+  const seededRun = evaluationRuns.find((run) => run.id === id);
+  if (seededRun) return seededRun;
+
+  const externalRun = await resolveExternalRunById(id);
+  if (externalRun) return externalRun;
+
+  for (const agent of demoAgents) {
+    for (const suite of testSuites) {
+      for (const version of agent.versions) {
+        if (id === `run-demo-${agent.id}-${suite.id}-${version.version}`) {
+          return runDemoEvaluation({
+            agentId: agent.id,
+            suiteId: suite.id,
+            promptVersion: version.version,
+            scenarioCount: 5,
+            strictness: "balanced",
+            simulateApiFailures: true,
+            includePromptInjection: true,
+            scenarioSource: "seeded",
+          });
+        }
+      }
+    }
+  }
+
+  return null;
 }
 
 export function generateDemoScenarios(suiteId: string, count = 5) {

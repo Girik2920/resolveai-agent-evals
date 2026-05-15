@@ -12,6 +12,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { demoAgents, testSuites } from "@/lib/data/seed";
+import { scenarioSources, type ScenarioSourceId } from "@/lib/data/real-world";
 
 const steps = [
   "Generating scenarios",
@@ -25,9 +26,10 @@ const steps = [
 type RunEvaluationClientProps = {
   initialAgentId?: string;
   initialSuiteId?: string;
+  initialSource?: ScenarioSourceId;
 };
 
-export function RunEvaluationClient({ initialAgentId, initialSuiteId }: RunEvaluationClientProps) {
+export function RunEvaluationClient({ initialAgentId, initialSuiteId, initialSource }: RunEvaluationClientProps) {
   const router = useRouter();
   const [agentId, setAgentId] = useState(
     demoAgents.some((agent) => agent.id === initialAgentId) ? initialAgentId! : demoAgents[1].id
@@ -36,6 +38,9 @@ export function RunEvaluationClient({ initialAgentId, initialSuiteId }: RunEvalu
   const [promptVersion, setPromptVersion] = useState(agent.versions.at(-1)?.version ?? "v2");
   const [suiteId, setSuiteId] = useState(
     testSuites.some((suite) => suite.id === initialSuiteId) ? initialSuiteId! : testSuites[0].id
+  );
+  const [scenarioSource, setScenarioSource] = useState<ScenarioSourceId>(
+    scenarioSources.some((source) => source.id === initialSource) ? initialSource! : "doordish"
   );
   const [scenarioCount, setScenarioCount] = useState([5]);
   const [strictness, setStrictness] = useState("balanced");
@@ -62,6 +67,7 @@ export function RunEvaluationClient({ initialAgentId, initialSuiteId }: RunEvalu
         strictness,
         simulateApiFailures: apiFailures,
         includePromptInjection: promptInjection,
+        scenarioSource,
       }),
     });
     const data = (await response.json()) as { runId: string };
@@ -126,6 +132,29 @@ export function RunEvaluationClient({ initialAgentId, initialSuiteId }: RunEvalu
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label>Scenario source</Label>
+            <Select value={scenarioSource} onValueChange={(value) => setScenarioSource(value as ScenarioSourceId)}>
+              <SelectTrigger className="border-white/10 bg-white/5 text-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {scenarioSources.map((source) => (
+                  <SelectItem key={source.id} value={source.id}>
+                    {source.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="rounded-md border border-sky-400/20 bg-sky-500/10 p-3">
+              <p className="text-sm font-medium text-sky-100">
+                {scenarioSources.find((source) => source.id === scenarioSource)?.dataProvider}
+              </p>
+              <p className="mt-1 text-sm text-sky-100/65">
+                {scenarioSources.find((source) => source.id === scenarioSource)?.description}
+              </p>
+            </div>
           </div>
           <div className="grid gap-3">
             <div className="flex items-center justify-between">
@@ -200,6 +229,9 @@ export function RunEvaluationClient({ initialAgentId, initialSuiteId }: RunEvalu
             </div>
             <p className="mt-2 text-sm text-violet-100/65">
               Add OPENAI_API_KEY to switch scenario generation to AI SDK structured outputs.
+            </p>
+            <p className="mt-2 text-xs text-violet-100/50">
+              DoorDish is a fictional delivery marketplace connector for testing. It is not affiliated with DoorDash.
             </p>
           </div>
         </CardContent>

@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { evaluationRuns, getRun } from "@/lib/data/seed";
+import { evaluationRuns } from "@/lib/data/seed";
+import { resolveEvaluationRun } from "@/lib/evals/engine";
 import { badgeClass } from "@/lib/evals/rubric";
 
 export function generateStaticParams() {
@@ -16,7 +17,7 @@ export function generateStaticParams() {
 
 export default async function ReportDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const run = getRun(id);
+  const run = await resolveEvaluationRun(id);
   if (!run) notFound();
   const failureCategories = Object.entries(
     run.scenarioResults

@@ -10,6 +10,7 @@ const schema = z.object({
   strictness: z.enum(["lenient", "balanced", "strict"]),
   simulateApiFailures: z.boolean(),
   includePromptInjection: z.boolean(),
+  scenarioSource: z.enum(["seeded", "doordish", "retail-live", "mixed-ops"]).default("seeded"),
 });
 
 export async function POST(request: Request) {

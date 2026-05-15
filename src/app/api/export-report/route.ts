@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getRun } from "@/lib/data/seed";
+import { resolveEvaluationRun } from "@/lib/evals/engine";
 
 const schema = z.object({
   runId: z.string(),
   format: z.enum(["json", "csv", "markdown"]).default("json"),
 });
 
-function csv(run: NonNullable<ReturnType<typeof getRun>>) {
+type ResolvedRun = NonNullable<Awaited<ReturnType<typeof resolveEvaluationRun>>>;
+
+function csv(run: ResolvedRun) {
   const rows = [
     ["Scenario", "Intent", "Risk", "Result", "Score", "Failure reason"],
     ...run.scenarioResults.map((scenario) => [
@@ -22,7 +24,7 @@ function csv(run: NonNullable<ReturnType<typeof getRun>>) {
   return rows.map((row) => row.map((cell) => `"${cell.replaceAll('"', '""')}"`).join(",")).join("\n");
 }
 
-function markdown(run: NonNullable<ReturnType<typeof getRun>>) {
+function markdown(run: ResolvedRun) {
   return `# ${run.name}
 
 Overall score: ${run.overallScore}
@@ -47,7 +49,7 @@ export async function GET(request: Request) {
     runId: url.searchParams.get("runId"),
     format: url.searchParams.get("format") ?? "json",
   });
-  const run = getRun(input.runId);
+  const run = await resolveEvaluationRun(input.runId);
   if (!run) return NextResponse.json({ error: "Report not found" }, { status: 404 });
 
   if (input.format === "csv") {
